@@ -4,11 +4,15 @@ on:
   push:
     branches: [ main ]
     tags: [ 'v*' ]
-  workflow_dispatch:
+  workflow_dispatch:  # 保留手动触发
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022  # 固定稳定环境，避免版本重定向
+    # 可选：增加权限设置，防止 workflow 权限问题
+    permissions:
+      contents: write
+      actions: write
 
     steps:
     - name: Checkout code
@@ -18,23 +22,25 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.9'
+        cache: 'pip'  # 缓存依赖，加速构建
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pyinstaller
+        pip install pyinstaller==6.10.0  # 固定版本，避免兼容性问题
 
-    - name: Build EXE
-      run: |
-        pyinstaller --noconfirm --onefile --windowed ^
-          --name "全站同品检测工具" ^
-          --hidden-import=pandas ^
-          --hidden-import=openpyxl ^
-          --hidden-import=requests ^
-          --collect-all pandas ^
-          --collect-all openpyxl ^
-          main.py
+    - name: Build EXE with PyInstaller
+      # 修复1：用反引号`作为PowerShell换行符
+      # 修复2：参数格式优化，避免空格问题
+      run: pyinstaller --noconfirm --onefile --windowed `
+        --name "全站同品检测工具" `
+        --hidden-import=pandas `
+        --hidden-import=openpyxl `
+        --hidden-import=requests `
+        --collect-all pandas `
+        --collect-all openpyxl `
+        main.py
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
